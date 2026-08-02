@@ -9,8 +9,8 @@ Este documento es la guía principal del equipo: estructura del proyecto, funcio
 ## Tabla de contenidos
 
 1. [Stack tecnológico](#stack-tecnológico)
-2. [Requisitos previos](#requisitos-previos)
-3. [Inicio rápido](#inicio-rápido)
+2. [Guía de inicio rápido para el equipo](#-guía-de-inicio-rápido-para-el-equipo)
+3. [Uso diario](#uso-diario)
 4. [Servicios Docker](#servicios-docker)
 5. [Conexión a la base de datos](#conexión-a-la-base-de-datos)
 6. [Estructura del proyecto](#estructura-del-proyecto)
@@ -21,6 +21,7 @@ Este documento es la guía principal del equipo: estructura del proyecto, funcio
 11. [Comandos útiles](#comandos-útiles)
 12. [Flujo de trabajo en equipo](#flujo-de-trabajo-en-equipo)
 13. [Herramientas de calidad de código](#herramientas-de-calidad-de-código)
+14. [Solución de problemas](#solución-de-problemas)
 
 ---
 
@@ -28,132 +29,230 @@ Este documento es la guía principal del equipo: estructura del proyecto, funcio
 
 | Capa | Tecnología |
 |------|------------|
-| Backend | Laravel (PHP) |
-| Frontend | React + Inertia.js + TypeScript |
+| Backend | Laravel 11 (PHP 8.3) |
+| Frontend | React + Inertia.js + TypeScript + Vite |
 | Estilos | Tailwind CSS |
 | Base de datos | PostgreSQL 16 |
 | Admin BD | pgAdmin 4 |
+| Caché / Colas | Redis |
+| Servidor web | Nginx |
 | Contenedores | Docker + Docker Compose |
 | Multi-tenant | Stancl Tenancy (por subdominio) |
 | Calidad | Laravel Pint, PHPStan (Larastan) |
 
 ---
 
-## Requisitos previos
+## 🚀 Guía de inicio rápido para el equipo
 
-Antes de empezar, cada desarrollador debe tener instalado:
+### Prerrequisitos en su PC
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (en ejecución)
-- [Git](https://git-scm.com/)
-- Editor de código (recomendado: VS Code / Cursor)
-
-> **Nota:** No es necesario instalar PostgreSQL ni pgAdmin en el sistema operativo. Todo corre dentro de Docker.
+- Tener instalado **Git**.
+- Tener instalado **Docker Desktop** (y ejecutándose).
 
 ---
 
-## Inicio rápido
-
-### 1. Clonar el repositorio
+### Paso 1: Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone https://github.com/RREEC-253/Proyecto-K-rito.git
 cd proyecto001
 ```
 
-### 2. Configurar variables de entorno
+---
+
+### Paso 2: Crear el archivo de variables de entorno `.env`
+
+Cada desarrollador debe tener su archivo `.env` local. Copia el archivo `.env.example`:
+
+**Linux / macOS / Git Bash:**
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` con los valores de conexión (ver sección [Conexión a la base de datos](#conexión-a-la-base-de-datos)).
+**PowerShell (Windows):**
 
-### 3. Levantar los contenedores
+```powershell
+Copy-Item .env.example .env
+```
+
+Asegúrate de que contenga las credenciales de la base de datos y Redis de Docker:
+
+```ini
+DB_CONNECTION=pgsql
+DB_HOST=postgres_db
+DB_PORT=5432
+DB_DATABASE=root
+DB_USERNAME=root
+DB_PASSWORD=root
+
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
+
+> **Importante:** `DB_HOST=postgres_db` y `REDIS_HOST=redis` usan los **nombres de servicio** de Docker, porque Laravel corre dentro del contenedor `saas_app`.
+
+---
+
+### Paso 3: Construir y levantar los contenedores
+
+Para construir las imágenes e iniciar todos los servicios:
+
+```bash
+docker compose up -d --build
+```
+
+Esto levanta: PostgreSQL, pgAdmin, PHP-FPM (Laravel), Nginx, Redis y Vite (Node).
+
+---
+
+### Paso 4: Instalar dependencias de PHP y Node.js
+
+**1. Instalar paquetes de PHP (Composer):**
+
+```bash
+docker exec -it saas_app composer install
+```
+
+**2. Instalar paquetes de JavaScript (NPM):**
+
+**Linux / macOS / Git Bash:**
+
+```bash
+docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm install
+```
+
+**PowerShell (Windows):**
+
+```powershell
+docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm install
+```
+
+---
+
+### Paso 5: Clave de aplicación y migraciones
+
+**1. Generar la clave de Laravel:**
+
+```bash
+docker exec -it saas_app php artisan key:generate
+```
+
+**2. Correr las migraciones de la base de datos:**
+
+```bash
+docker exec -it saas_app php artisan migrate
+```
+
+**3. Reiniciar los contenedores para que Node/Vite tome los cambios:**
 
 ```bash
 docker compose up -d
 ```
 
-Docker descargará las imágenes (solo la primera vez), creará la red, los volúmenes y levantará los servicios definidos en `docker-compose.yml`.
+---
 
-### 4. Verificar que todo esté corriendo
+### Paso 6: Verificar que todo funciona
 
-```bash
-docker ps
-```
+| Servicio | URL / Acceso |
+|----------|--------------|
+| Aplicación Laravel | http://localhost:8080 |
+| Vite (hot reload) | http://localhost:5173 |
+| pgAdmin | http://localhost:5050 |
+| PostgreSQL (desde tu PC) | `localhost:5433` |
+| Redis (desde tu PC) | `localhost:6379` |
 
-Deberías ver al menos:
+---
 
-- `mi_proyecto_db` (PostgreSQL)
-- `mi_proyecto_pgadmin` (pgAdmin)
+## Uso diario
 
-### 5. Instalar dependencias de la aplicación (cuando Laravel esté configurado)
+En el día a día, únicamente necesitarás:
 
-```bash
-composer install
-npm install
-php artisan key:generate
-php artisan migrate
-npm run dev
-```
+| Acción | Comando |
+|--------|---------|
+| **Iniciar a trabajar** | `docker compose up -d` |
+| **Apagar el entorno** | `docker compose down` |
+| **Ver logs** | `docker compose logs -f` |
+| **Entrar al contenedor PHP** | `docker exec -it saas_app bash` |
 
 ---
 
 ## Servicios Docker
 
-El archivo `docker-compose.yml` orquesta el entorno local:
+El archivo `docker-compose.yml` orquesta el entorno local en la red `saas-network`:
 
-| Servicio | Contenedor | Imagen | Puerto (host) | Descripción |
-|----------|------------|--------|---------------|-------------|
-| `postgres_db` | `mi_proyecto_db` | `postgres:16` | `5433` | Base de datos principal |
-| `pgadmin` | `mi_proyecto_pgadmin` | `dpage/pgadmin4` | `80` | Interfaz web para administrar PostgreSQL |
+| Servicio | Contenedor | Imagen / Build | Puerto (host) | Descripción |
+|----------|------------|----------------|---------------|-------------|
+| `postgres_db` | `mi_proyecto_db` | `postgres:16` | `5433` | Base de datos PostgreSQL |
+| `pgadmin` | `mi_proyecto_pgadmin` | `dpage/pgadmin4` | `5050` | Administrador web de PostgreSQL |
+| `app` | `saas_app` | `docker/php/Dockerfile` | — | PHP 8.3-FPM + Laravel |
+| `webserver` | `saas_webserver` | `nginx:alpine` | `8080` | Servidor web Nginx |
+| `redis` | `saas_redis` | `redis:alpine` | `6379` | Caché y colas |
+| `node` | `saas_node` | `node:20-alpine` | `5173` | Vite dev server (React) |
 
-### Comandos Docker frecuentes
+### Arquitectura de contenedores
 
-```bash
-# Levantar servicios en segundo plano
-docker compose up -d
-
-# Ver logs
-docker compose logs -f
-
-# Detener servicios
-docker compose down
-
-# Detener y eliminar volúmenes (⚠️ borra los datos de la BD)
-docker compose down -v
-
-# Recrear contenedores tras cambios en docker-compose.yml
-docker compose up -d
 ```
+                    ┌─────────────┐
+  Browser ──8080──► │   Nginx     │
+                    │ (webserver) │
+                    └──────┬──────┘
+                           │ fastcgi
+                    ┌──────▼──────┐     ┌─────────────┐
+                    │  PHP-FPM    │────►│ PostgreSQL  │
+                    │  (saas_app) │     │ (postgres)  │
+                    └──────┬──────┘     └─────────────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+        ┌─────────┐  ┌─────────┐  ┌─────────┐
+        │  Redis  │  │  Node   │  │ pgAdmin │
+        │         │  │ (Vite)  │  │         │
+        └─────────┘  └─────────┘  └─────────┘
+```
+
+### Archivos Docker del proyecto
+
+| Archivo | Propósito |
+|---------|-----------|
+| `docker-compose.yml` | Orquestación de todos los servicios |
+| `docker/php/Dockerfile` | Imagen PHP 8.3 con extensiones (pgsql, redis, zip, etc.) y Composer |
+| `docker/nginx/conf.d/app.conf` | Configuración Nginx → PHP-FPM en `app:9000` |
 
 ### Volúmenes persistentes
 
 ```yaml
 volumes:
-  postgres_data:   # Datos de PostgreSQL
-  pgadmin_data:    # Configuración de pgAdmin
+  postgres_data:   # Datos de PostgreSQL (persisten tras docker compose down)
 ```
 
-Los volúmenes **persisten** aunque hagas `docker compose down`. Solo se eliminan con `docker compose down -v`.
+> Los volúmenes **no se eliminan** con `docker compose down`. Solo se borran con `docker compose down -v`.
+
+### Comandos Docker frecuentes
+
+```bash
+docker compose up -d --build    # Construir y levantar
+docker compose up -d            # Levantar (sin rebuild)
+docker compose down             # Detener servicios
+docker compose down -v          # Detener y borrar volúmenes (⚠️ pierde datos BD)
+docker compose logs -f app      # Logs del contenedor PHP
+docker compose up -d --force-recreate   # Forzar recreación tras cambios
+```
 
 ---
 
 ## Conexión a la base de datos
 
-### Mapeo de puertos (importante)
-
-En `docker-compose.yml`:
+### Mapeo de puertos
 
 ```yaml
 ports:
-  - "5433:5432"
+  - "5433:5432"   # PostgreSQL: host 5433 → contenedor 5432
 ```
 
-- **5433** → puerto en tu PC (Windows/macOS/Linux)
-- **5432** → puerto interno de PostgreSQL dentro del contenedor
-
-### Credenciales actuales
+### Credenciales
 
 | Campo | Valor |
 |-------|-------|
@@ -161,16 +260,25 @@ ports:
 | Contraseña | `root` |
 | Base de datos | `root` |
 
-### Desde pgAdmin (navegador → http://localhost)
+### Desde Laravel (contenedor `saas_app`)
 
-**Login en pgAdmin:**
+Usar en `.env`:
+
+```ini
+DB_HOST=postgres_db
+DB_PORT=5432
+```
+
+### Desde pgAdmin (http://localhost:5050)
+
+**Login pgAdmin:**
 
 | Campo | Valor |
 |-------|-------|
 | Email | `admin@admin.com` |
 | Contraseña | `saraulitape` |
 
-**Registrar servidor PostgreSQL en pgAdmin:**
+**Registrar servidor PostgreSQL:**
 
 | Campo | Valor |
 |-------|-------|
@@ -178,11 +286,8 @@ ports:
 | Puerto | `5432` |
 | Usuario | `root` |
 | Contraseña | `root` |
-| Base de datos | `root` |
 
-> Usa el **nombre del servicio** (`postgres_db`) y puerto **5432** porque pgAdmin corre dentro de la misma red Docker.
-
-### Desde tu máquina (DBeaver, Laravel `.env`, etc.)
+### Desde tu PC (DBeaver, TablePlus, etc.)
 
 | Campo | Valor |
 |-------|-------|
@@ -190,18 +295,6 @@ ports:
 | Puerto | `5433` |
 | Usuario | `root` |
 | Contraseña | `root` |
-| Base de datos | `root` |
-
-### Ejemplo de `.env` para Laravel
-
-```env
-DB_CONNECTION=pgsql
-DB_HOST=localhost
-DB_PORT=5433
-DB_DATABASE=root
-DB_USERNAME=root
-DB_PASSWORD=root
-```
 
 ---
 
@@ -215,8 +308,15 @@ proyecto001/
 │   ├── Exceptions/
 │   ├── Http/                      # Controladores globales y middleware base
 │   ├── Models/                    # Modelos globales (ej. Tenant central)
+│   ├── Providers/
 │   └── Modules/                   # Arquitectura modular del proyecto
 │       ├── Authentication/
+│       │   ├── Controllers/
+│       │   ├── DTOs/
+│       │   ├── Requests/
+│       │   ├── Services/
+│       │   ├── Models/
+│       │   └── Repositories/
 │       ├── Users/
 │       ├── Roles/
 │       ├── Companies/
@@ -233,13 +333,16 @@ proyecto001/
 │   │   └── tenant/                # Migraciones por cliente (Stancl Tenancy)
 │   └── seeders/                   # Datos iniciales (roles, permisos, etc.)
 ├── docker/
-│   ├── nginx/                     # Configuración de Nginx
-│   ├── php/                       # Dockerfile e ini de PHP
+│   ├── nginx/
+│   │   └── conf.d/
+│   │       └── app.conf           # Configuración Nginx
+│   ├── php/
+│   │   └── Dockerfile             # Imagen PHP 8.3-FPM
 │   └── postgres/                  # Scripts iniciales de BD (opcional)
 ├── resources/                     # Frontend (React + Inertia + Tailwind)
 │   ├── css/
 │   ├── js/
-│   │   ├── Components/            # Componentes reutilizables (botones, tablas, modales)
+│   │   ├── Components/            # Componentes reutilizables
 │   │   ├── Layouts/               # Plantillas (navbar, sidebar)
 │   │   ├── Pages/                 # Vistas Inertia
 │   │   │   ├── Auth/
@@ -270,21 +373,22 @@ proyecto001/
 ### Visión general
 
 ```
-┌─────────────┐     HTTP      ┌──────────────┐     SQL      ┌─────────────┐
+┌─────────────┐     HTTP     ┌──────────────┐     SQL      ┌─────────────┐
 │   React     │ ◄──────────► │   Laravel    │ ◄──────────► │  PostgreSQL │
 │  (Inertia)  │   Inertia    │   (Módulos)  │              │             │
-└─────────────┘              └──────────────┘              └─────────────┘
+└─────────────┘              └──────┬───────┘              └─────────────┘
                                     │
                                     ▼
                              Multi-tenant
                           (subdominio → tenant)
 ```
 
-1. El usuario accede a la aplicación web (ej. `empresa1.tudominio.com`).
-2. **Laravel** identifica el tenant (empresa/cliente) según el subdominio.
-3. Las rutas en `tenant.php` sirven la lógica específica de cada cliente.
-4. **Inertia.js** conecta Laravel con **React** sin API REST tradicional para el frontend interno.
-5. Cada módulo encapsula su propia lógica de negocio.
+1. El usuario accede a http://localhost:8080 (Nginx → PHP-FPM).
+2. **Laravel** identifica el tenant según el subdominio (cuando Tenancy esté configurado).
+3. **Inertia.js** conecta Laravel con **React** sin API REST tradicional para el frontend interno.
+4. **Redis** gestiona caché y colas de trabajo.
+5. **Vite** (contenedor `node`) compila el frontend con hot reload en el puerto 5173.
+6. Cada módulo encapsula su propia lógica de negocio.
 
 ### Capas dentro de un módulo (ejemplo: Authentication)
 
@@ -295,7 +399,7 @@ proyecto001/
 | `DTOs/` | Objetos de transferencia de datos entre capas |
 | `Services/` | Lógica de negocio |
 | `Models/` | Modelos Eloquent del módulo |
-| `Repositories/` | Acceso a datos (opcional, cuando se necesite abstraer queries) |
+| `Repositories/` | Acceso a datos (opcional) |
 
 ### Flujo de una petición típica
 
@@ -324,7 +428,7 @@ Ruta (web.php / tenant.php)
 | `Reports` | Reportes |
 | `Billing` | Facturación electrónica |
 
-Cada módulo nuevo debe seguir la misma estructura interna que `Authentication` (`Controllers`, `Services`, `Models`, etc.).
+Cada módulo nuevo debe seguir la misma estructura interna que `Authentication`.
 
 ---
 
@@ -339,13 +443,7 @@ Cada módulo nuevo debe seguir la misma estructura interna que `Authentication` 
 | `resources/css/` | Estilos globales con Tailwind |
 | `resources/views/app.blade.php` | HTML base que monta la app React |
 
-### Convención de páginas
-
-Las páginas en `Pages/` deben reflejar los módulos del backend:
-
-- `Pages/Auth/` → pantallas de autenticación
-- `Pages/Inventory/` → vistas de inventario
-- `Pages/Sales/` → vistas de ventas
+Vite corre en el contenedor `saas_node` y expone el dev server en http://localhost:5173.
 
 ---
 
@@ -358,25 +456,12 @@ Las páginas en `Pages/` deben reflejar los módulos del backend:
 | `database/migrations/` | Tablas del sistema central (tenants, dominios, usuarios globales) |
 | `database/migrations/tenant/` | Tablas que se crean **por cada cliente/empresa** |
 
-### Seeders
-
-Los seeders en `database/seeders/` cargan datos iniciales:
-
-- Roles y permisos base
-- Usuario administrador
-- Configuración mínima del sistema
-
-### Comandos (cuando Laravel + Tenancy estén instalados)
+### Comandos (dentro del contenedor)
 
 ```bash
-# Migraciones centrales
-php artisan migrate
-
-# Migraciones para todos los tenants
-php artisan tenants:migrate
-
-# Seeders
-php artisan db:seed
+docker exec -it saas_app php artisan migrate           # Migraciones centrales
+docker exec -it saas_app php artisan tenants:migrate   # Migraciones por tenant
+docker exec -it saas_app php artisan db:seed           # Seeders
 ```
 
 ---
@@ -386,29 +471,32 @@ php artisan db:seed
 ### Docker
 
 ```bash
-docker compose up -d          # Levantar entorno
-docker compose down           # Detener entorno
-docker compose logs postgres_db   # Logs de PostgreSQL
-docker compose logs pgadmin       # Logs de pgAdmin
+docker compose up -d
+docker compose down
+docker compose logs -f
+docker exec -it saas_app bash
 ```
 
-### Laravel (backend)
+### Laravel (vía contenedor)
 
 ```bash
-php artisan serve             # Servidor de desarrollo
-php artisan migrate           # Ejecutar migraciones
-php artisan make:model        # Crear modelo
-php artisan route:list        # Listar rutas
-./vendor/bin/pint             # Formatear código PHP
-./vendor/bin/phpstan analyse  # Análisis estático
+docker exec -it saas_app php artisan migrate
+docker exec -it saas_app php artisan route:list
+docker exec -it saas_app php artisan make:model NombreModelo
+docker exec -it saas_app composer require paquete/nombre
+docker exec -it saas_app ./vendor/bin/pint
+docker exec -it saas_app ./vendor/bin/phpstan analyse
 ```
 
 ### Frontend
 
 ```bash
-npm install                   # Instalar dependencias
-npm run dev                   # Servidor Vite en desarrollo
-npm run build                 # Build de producción
+# Instalar dependencias (una vez)
+docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm install
+
+# El contenedor saas_node ya ejecuta npm run dev automáticamente
+# Para rebuild manual:
+docker compose restart node
 ```
 
 ---
@@ -418,20 +506,14 @@ npm run build                 # Build de producción
 ### Primer día (nuevo desarrollador)
 
 1. Clonar el repo
-2. Copiar `.env.example` → `.env`
-3. Ejecutar `docker compose up -d`
-4. Instalar dependencias (`composer install`, `npm install`)
-5. Ejecutar migraciones y seeders
-6. Abrir pgAdmin en http://localhost y verificar conexión a la BD
-7. Iniciar la app (`npm run dev` + `php artisan serve` o contenedor PHP/Nginx cuando esté configurado)
-
-### Al modificar `docker-compose.yml`
-
-```bash
-docker compose up -d
-```
-
-No hace falta `down` en la mayoría de casos. Usa `docker compose down -v` **solo** si quieres resetear la base de datos por completo.
+2. Copiar `.env.example` → `.env` y configurar credenciales Docker
+3. `docker compose up -d --build`
+4. `docker exec -it saas_app composer install`
+5. Instalar dependencias npm (ver Paso 4 de la guía)
+6. `docker exec -it saas_app php artisan key:generate`
+7. `docker exec -it saas_app php artisan migrate`
+8. `docker compose up -d`
+9. Abrir http://localhost:8080 y http://localhost:5050 (pgAdmin)
 
 ### Qué se comparte por Git
 
@@ -439,14 +521,15 @@ No hace falta `down` en la mayoría de casos. Usa `docker compose down -v` **sol
 |----------------|----------------|
 | Código fuente | Datos de la BD local |
 | `docker-compose.yml` | Archivo `.env` (secretos) |
-| `.env.example` | Volúmenes Docker locales |
-| Migraciones y seeders | Imágenes Docker (se descargan solas) |
+| `docker/` (Dockerfile, nginx) | Volúmenes Docker locales |
+| `.env.example` | Imágenes Docker (se descargan solas) |
+| Migraciones y seeders | |
 
 ### Ramas (recomendado)
 
 - `main` → código estable en producción
 - `develop` → integración de features
-- `feature/nombre-modulo` → trabajo individual por módulo o funcionalidad
+- `feature/nombre-modulo` → trabajo individual por módulo
 
 ---
 
@@ -462,9 +545,9 @@ No hace falta `down` en la mayoría de casos. Usa `docker compose down -v` **sol
 Ejecutar antes de hacer commit:
 
 ```bash
-./vendor/bin/pint
-./vendor/bin/phpstan analyse
-npm run build
+docker exec -it saas_app ./vendor/bin/pint
+docker exec -it saas_app ./vendor/bin/phpstan analyse
+docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm run build
 ```
 
 ---
@@ -477,32 +560,51 @@ Docker Desktop no está en ejecución. Abre Docker Desktop y espera a que inicie
 
 ### Error: `Connection refused` en puerto 5433 desde pgAdmin
 
-Estás usando el puerto incorrecto. Desde pgAdmin usa host `postgres_db` y puerto **5432**.
+Desde pgAdmin usa host `postgres_db` y puerto **5432**, no 5433.
+
+### La app no carga en http://localhost:8080
+
+Verifica que los contenedores estén corriendo:
+
+```bash
+docker ps
+```
+
+Deben aparecer `saas_webserver` y `saas_app`.
+
+### Vite no compila / cambios de frontend no se ven
+
+```bash
+docker compose restart node
+docker compose logs -f node
+```
 
 ### Los cambios en `docker-compose.yml` no se aplican
 
 ```bash
-docker compose up -d --force-recreate
+docker compose up -d --build --force-recreate
 ```
 
 ### Quiero empezar con una base de datos limpia
 
 ```bash
 docker compose down -v
-docker compose up -d
+docker compose up -d --build
+docker exec -it saas_app php artisan migrate
 ```
 
 ---
 
 ## Próximos pasos del proyecto
 
-- [ ] Instalar Laravel en la raíz del proyecto
-- [ ] Configurar contenedores PHP y Nginx en `docker/`
+- [x] Instalar Laravel
+- [x] Configurar contenedores PHP, Nginx, Redis y Node en Docker
 - [ ] Integrar Inertia.js + React + Tailwind
 - [ ] Configurar Stancl Tenancy (multi-tenant)
 - [ ] Implementar módulo `Authentication`
 - [ ] Definir migraciones centrales y tenant
 - [ ] Configurar CI/CD en `.github/`
+- [x] Actualizar `.env.example` con valores Docker por defecto
 
 ---
 
