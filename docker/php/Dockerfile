@@ -22,4 +22,5 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Establecer directorio de trabajo
 WORKDIR /var/www
 # es para que el usuario que se esté ejecutando en el contenedor sea el usuario que se esté ejecutando en el sistema operativo
-USER $USER 
+USER www-data
+CMD ["php-fpm"]
