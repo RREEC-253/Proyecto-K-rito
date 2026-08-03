@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# Instalar dependencias del sistema
+# 1. Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -12,15 +12,31 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev
 
-# Limpiar cache de apt
+# 2. Limpiar caché de apt para reducir el tamaño de la imagen
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-# Instalar extensiones de PHP necesarias para PostgreSQL y Redis
+
+# 3. Instalar la extensión de Redis mediante PECL y habilitarla
+RUN pecl install redis && docker-php-ext-enable redis
+
+# 4. Instalar extensiones de PHP necesarias para Laravel y PostgreSQL
 RUN docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd zip
-# es para instalar el Composer
+
+# 5. Copiar el ejecutable de Composer desde la imagen oficial
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Establecer directorio de trabajo
+# 6. Establecer el directorio de trabajo
 WORKDIR /var/www
-# es para que el usuario que se esté ejecutando en el contenedor sea el usuario que se esté ejecutando en el sistema operativo
+
+# 7. Crear subdirectorios requeridos de storage y bootstrap/cache con permisos correctos
+RUN mkdir -p /var/www/storage/framework/views \
+    /var/www/storage/framework/sessions \
+    /var/www/storage/framework/cache/data \
+    /var/www/storage/logs \
+    /var/www/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+
+# 8. Cambiar al usuario no administrativo 'www-data' para la ejecución del contenedor
 USER www-data
+
 CMD ["php-fpm"]

@@ -121,16 +121,8 @@ docker exec -it saas_app composer install
 **Linux / macOS / Git Bash:**
 
 ```bash
-docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm install
+docker exec -it saas_node npm install
 ```
-
-**PowerShell (Windows):**
-
-```powershell
-docker run --rm -v "${PWD}:/var/www" -w /var/www node:20-alpine npm install
-```
-
----
 
 ### Paso 5: Clave de aplicación y migraciones
 
