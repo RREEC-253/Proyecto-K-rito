@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('user_roles', function (Blueprint $table) {
             $table->foreignUuid('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignUuid('role_id')->constrained('roles')->onDelete('cascade');
+            $table->timestamp('created_at')->useCurrent();
 
             $table->primary(['user_id', 'role_id']);
         });

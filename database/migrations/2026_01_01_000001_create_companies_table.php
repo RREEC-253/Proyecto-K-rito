@@ -19,8 +19,15 @@ return new class extends Migration
             $table->string('phone', 20)->nullable();
             $table->text('address')->nullable();
             $table->text('logo')->nullable();
-            $table->boolean('status')->default(true);
+            $table->string('timezone', 50)->default('America/Lima');
+            $table->jsonb('settings')->nullable();
+            $table->string('status', 20)->default('active'); // active | trial | suspended | cancelled
+            $table->softDeletes();
             $table->timestamps();
+
+            // Índices de rendimiento
+            $table->index('document_number');
+            $table->index('status');
         });
     }
 

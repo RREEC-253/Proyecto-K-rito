@@ -12,17 +12,27 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
             $table->foreignUuid('company_id')->constrained('companies')->onDelete('cascade');
-            $table->string('username', 50)->unique();
-            $table->string('email', 150)->unique();
-            $table->text('password'); // Recomendado usar 'password' para compatibilidad con Auth de Laravel
+            $table->string('username', 50);
+            $table->string('email', 150);
+            $table->text('password'); // Recomendado 'password' para compatibilidad nativa con Auth de Laravel
             $table->string('first_name', 100)->nullable();
             $table->string('last_name', 100)->nullable();
             $table->string('phone', 20)->nullable();
             $table->text('avatar')->nullable();
             $table->boolean('status')->default(true);
             $table->boolean('email_verified')->default(false);
+            $table->boolean('must_change_password')->default(false);
+            $table->smallInteger('failed_login_attempts')->default(0);
+            $table->timestamp('locked_until')->nullable();
             $table->timestamp('last_login')->nullable();
+            $table->softDeletes();
             $table->timestamps();
+
+            // Índices y Aislamiento Multitenant
+            $table->unique(['company_id', 'username']);
+            $table->unique(['company_id', 'email']);
+            $table->index('company_id');
+            $table->index('status');
         });
     }
 

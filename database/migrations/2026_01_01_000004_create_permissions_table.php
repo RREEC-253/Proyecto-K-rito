@@ -15,6 +15,9 @@ return new class extends Migration
             $table->string('action', 50);
             $table->string('code', 150)->unique();
             $table->text('description')->nullable();
+
+            // Índice compuesto
+            $table->index(['module', 'action']);
         });
     }
 

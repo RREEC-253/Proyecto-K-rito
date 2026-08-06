@@ -9,17 +9,23 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('email_verifications', function (Blueprint $table) {
+        Schema::create('user_tokens', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
             $table->foreignUuid('user_id')->constrained('users')->onDelete('cascade');
-            $table->text('token');
+            $table->string('type', 30); // password_reset | email_verification | invite
+            $table->text('token_hash');
             $table->timestamp('expires_at');
-            $table->timestamp('verified_at')->nullable();
+            $table->timestamp('used_at')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+
+            // Índices
+            $table->index('user_id');
+            $table->index(['user_id', 'type']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('email_verifications');
+        Schema::dropIfExists('user_tokens');
     }
 };

@@ -12,12 +12,17 @@ return new class extends Migration
         Schema::create('sessions', function (Blueprint $table) {
             $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
             $table->foreignUuid('user_id')->constrained('users')->onDelete('cascade');
-            $table->text('refresh_token');
+            $table->text('refresh_token_hash');
             $table->string('ip_address', 50)->nullable();
             $table->text('user_agent')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->timestamp('expires_at');
             $table->timestamp('revoked_at')->nullable();
             $table->timestamp('created_at')->useCurrent();
+
+            // Índices
+            $table->index('user_id');
+            $table->index('expires_at');
         });
     }
 
