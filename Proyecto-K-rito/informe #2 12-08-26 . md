@@ -1,0 +1,62 @@
+# Informe #2: Integración de Seeders Base y Configuración del Frontend (Vite + Vue 3)
+
+**Fecha:** 12 de Agosto de 2026  
+**Descripción:** Reporte de los cambios integrados en el repositorio del proyecto `Proyecto-K-rito`, que introducen datos semilla base en el backend y la estructura inicial del cliente SPA con Vue 3 y Pinia.
+
+---
+
+## 1. Backend: Datos Semilla y Seeders Base
+Se han añadido y configurado los siguientes seeders para agilizar las pruebas del módulo de Autenticación y garantizar un entorno funcional inmediato en el backend:
+
+- **`database/seeders/CompaniesTableSeeder.php`**:
+  - Crea una empresa de prueba con los datos mínimos y el slug `"prueba"`.
+  - Establece el estado de la empresa como `'active'`, indispensable para superar de forma transparente el middleware `EnsureCompanyIsActive`.
+- **`database/seeders/UsersTableSeeder.php`**:
+  - Obtiene la empresa creada y le asocia un usuario administrador inicial.
+  - Credenciales por defecto:
+    - **Usuario:** `admin`
+    - **Email:** `admin@admin.com`
+    - **Contraseña:** `admin` (hasheada de forma segura usando `Hash::make`).
+- **`database/seeders/DatabaseSeeder.php`**:
+  - Se actualizó para llamar a la secuencia completa en el orden de dependencias correcto:
+    1. `PermissionsTableSeeder`
+    2. `RolesTableSeeder`
+    3. `CompaniesTableSeeder`
+    4. `UsersTableSeeder`
+
+---
+
+## 2. Frontend: Estructura SPA y Módulo de Autenticación
+Se ha integrado la carpeta `frontend/` que contiene una aplicación Single Page Application (SPA) moderna desarrollada sobre **Vue 3** y **Vite**.
+
+### Configuración del Stack Tecnológico (frontend/package.json)
+- **Vite (v8.1.5)**: Herramienta de compilación ultrarrápida.
+- **Vue (v3.5.40)**: Framework principal con composición API.
+- **Pinia (v4.0.2)**: Gestión del estado de la aplicación.
+- **Vue Router (v5.2.0)**: Manejo de rutas del lado del cliente.
+- **Axios (v1.19.0)**: Cliente HTTP para realizar peticiones.
+
+### Archivos de Configuración Relevantes
+- **`vite.config.js`**: Define alias como `@/` para la carpeta `src/`.
+- **`jsconfig.json`**: Facilita el autocompletado en VSCode para las rutas de importación absolutas.
+
+### Lógica de Conectividad con la API
+- **`src/services/api.js`**:
+  - Configura el cliente Axios para comunicarse con el API Gateway en `http://localhost:8080/api/v1` (Puerto 8080 expuesto por Nginx de Docker).
+  - Define cabeceras estándar para envío y recepción de datos estructurados en formato `application/json`.
+- **`src/stores/auth.js`**:
+  - Gestiona el estado reactivo global del usuario autenticado y sus tokens (`accessToken`, `refreshToken`).
+  - Persiste el estado automáticamente en el `localStorage` del navegador para mantener la sesión tras recargar.
+  - Expone los métodos `login(credentials)` y `logout()`.
+
+### Vistas y Rutas
+- **`src/router/index.js`**:
+  - Define la ruta `/login` asociada al componente de inicio de sesión.
+  - Redirecciona por defecto de `/` a `/login`.
+- **`src/views/LoginView.vue`**:
+  - Interfaz de login limpia e interactiva diseñada con composición API (`<script setup>`).
+  - Permite capturar tres datos obligatorios acordados en el plan de arquitectura:
+    1. Código / Slug de la Empresa (`company_slug`)
+    2. Usuario o Correo (`identifier`)
+    3. Contraseña (`password`)
+  - Maneja estados de carga (`loading`) e interactúa directamente con el store de Pinia. Tras el éxito de las credenciales, redirige al usuario hacia `/dashboard`.
